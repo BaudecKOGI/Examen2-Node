@@ -3,17 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from "../../context/AuthContext";
 
 const Navbar = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logoutUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   if (!user) return null;
 
   const handleLogout = () => {
-    if (logout) logout();
-    else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
+    logoutUser(); // Ejecuta la funcion del contexto que resetea el usuario a null
     navigate('/login');
   };
 

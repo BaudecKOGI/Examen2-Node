@@ -9,7 +9,12 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
     }
   }, []);
 
@@ -22,11 +27,19 @@ export const AuthProvider = ({ children }) => {
   const logoutUser = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setUser(null);
+    setUser(null); // Limpia el estado de React en tiempo real
   };
 
   return (
-    <AuthContext.Provider value={{ user, loginUser, logoutUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loginUser,
+        logoutUser,
+        login: loginUser,   // Alias para evitar errores de referencia
+        logout: logoutUser  // Alias para evitar errores de referencia
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
