@@ -6,43 +6,72 @@ export default function Dashboard() {
   const { user } = useContext(AuthContext);
 
   return (
-    <div className="container mt-5">
-      <div className="p-5 mb-4 bg-light rounded-3 shadow-sm">
-        <h1 className="display-5 fw-bold">Bienvenido al Sistema de Farmacia</h1>
-        <p className="col-md-8 fs-4">
-          Hola, <strong>{user?.username}</strong>. Has accedido correctamente con el rol de{' '}
+    <div className="container mt-4">
+      <div className="p-4 mb-4 bg-light rounded-3 shadow-sm border">
+        <h1 className="display-6 fw-bold">Bienvenido al Sistema de Farmacia</h1>
+        <p className="fs-5 text-muted">
+          Hola, <strong>{user?.username || 'Usuario'}</strong>. Rol activo:{' '}
           <span className={`badge ${user?.role === 'admin' ? 'bg-danger' : user?.role === 'moderator' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
-            {user?.role}
-          </span>.
+            {user?.role?.toUpperCase()}
+          </span>
         </p>
-        <hr className="my-4" />
+        <hr />
 
-        {/* Vista para ADMINISTRADOR */}
-        {user?.role === 'admin' && (
-          <div>
-            <p className="text-muted">Tienes acceso total al sistema (gestión de laboratorios y órdenes de compra).</p>
-            <div className="d-flex gap-3">
-              <Link to="/laboratorios" className="btn btn-primary btn-lg">Gestión de Laboratorios</Link>
-              <Link to="/ordenes-compra" className="btn btn-success btn-lg">Gestión de Órdenes de Compra</Link>
+        <div className="row g-4 mt-2">
+          {/* Módulo Laboratorios: Admin y Moderator */}
+          {(user?.role === 'admin' || user?.role === 'moderator') && (
+            <div className="col-md-6 col-lg-3">
+              <div className="card h-100 shadow-sm border-primary">
+                <div className="card-body text-center">
+                  <h5 className="card-title text-primary">🔬 Laboratorios</h5>
+                  <p className="card-text text-muted small">Gestión de proveedores y laboratorios fabricantes.</p>
+                  <Link to="/laboratorios" className="btn btn-outline-primary btn-sm w-100">Acceder</Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Módulo Medicamentos: Todos los roles autenticados */}
+          <div className="col-md-6 col-lg-3">
+            <div className="card h-100 shadow-sm border-info">
+              <div className="card-body text-center">
+                <h5 className="card-title text-info">💊 Medicamentos</h5>
+                <p className="card-text text-muted small">Catálogo e inventario general de medicamentos.</p>
+                <Link to="/medicamentos" className="btn btn-outline-info btn-sm w-100">Acceder</Link>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Vista para MODERADOR */}
-        {user?.role === 'moderator' && (
-          <div>
-            <p className="text-muted">Tienes acceso intermedio al sistema (únicamente gestión de laboratorios).</p>
-            <div className="d-flex gap-3">
-              <Link to="/laboratorios" className="btn btn-primary btn-lg">Gestión de Laboratorios</Link>
+          {/* Módulo Órdenes de Compra: Solo Admin */}
+          {user?.role === 'admin' && (
+            <div className="col-md-6 col-lg-3">
+              <div className="card h-100 shadow-sm border-success">
+                <div className="card-body text-center">
+                  <h5 className="card-title text-success">📦 Órdenes de Compra</h5>
+                  <p className="card-text text-muted small">Emisión y control de compras a proveedores.</p>
+                  <Link to="/ordenes-compra" className="btn btn-outline-success btn-sm w-100">Acceder</Link>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Vista para USUARIO REGULAR */}
+          {/* Módulo Órdenes de Venta: Admin y Moderator */}
+          {(user?.role === 'admin' || user?.role === 'moderator') && (
+            <div className="col-md-6 col-lg-3">
+              <div className="card h-100 shadow-sm border-warning">
+                <div className="card-body text-center">
+                  <h5 className="card-title text-warning text-dark">🛒 Órdenes de Venta</h5>
+                  <p className="card-text text-muted small">Registro y seguimiento de ventas realizadas.</p>
+                  <Link to="/ordenes-venta" className="btn btn-outline-warning text-dark btn-sm w-100">Acceder</Link>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {user?.role === 'user' && (
-          <div className="alert alert-info">
-            <h5>Vista Limitada</h5>
-            <p className="mb-0">Tu cuenta no tiene privilegios para modificar o crear laboratorios ni órdenes de compra. Si requieres permisos adicionales, contacta al administrador.</p>
+          <div className="alert alert-info mt-4 mb-0">
+            <strong>Modo Consulta:</strong> Tu cuenta tiene permisos de lectura para consultar el catálogo de medicamentos.
           </div>
         )}
       </div>

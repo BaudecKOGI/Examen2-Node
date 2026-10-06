@@ -1,130 +1,93 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../services/api';
+import AlertMessage from '../components/common/AlertMessage';
+import LaboratorioForm from '../components/laboratorios/LaboratorioForm';
+import LaboratorioTable from '../components/laboratorios/LaboratorioTable';
 
-export default function Laboratorios() {
-  const [labs, setLabs] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ razonSocial: '', direccion: '', telefono: '', email: '', contacto: '' });
-  const [editId, setEditId] = useState(null);
+const LaboratoriosPage = () => {
+  const [laboratorios, setLaboratorios] = useState([]);
+  const [formData, setFormData] = useState({ CodLab: null, razonSocial: '', direccion: '', telefono: '', email: '', contacto: '' });
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [modoEdicion, setModoEdicion] = useState(false);
 
-  useEffect(() => {
-    loadLabs();
-  }, []);
+  useEffect(() => { cargarLaboratorios(); }, []);
 
-  const loadLabs = async () => {
+  const cargarLaboratorios = async () => {
+    setLoading(true);
     try {
       const res = await API.get('/laboratorios');
-      setLabs(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+      setLaboratorios(res.data);
+    } catch (err) { setErrorMsg(err.message); }
+    finally { setLoading(false); }
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!formData.razonSocial.trim()) return alert('Ingrese la razón social');
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg(''); setSuccessMsg('');
+    if (!formData.razonSocial.trim()) return setErrorMsg('La Razón Social es obligatoria.');
+
+    setLoading(true);
     try {
-      if (editId) {
-        await API.put(`/laboratorios/${editId}`, formData);
+      if (modoEdicion) {
+        await API.put(`/laboratorios/${formData.CodLab}`, formData);
+        setSuccessMsg('Laboratorio actualizado correctamente.');
       } else {
         await API.post('/laboratorios', formData);
+        setSuccessMsg('Laboratorio registrado exitosamente.');
       }
-      setShowModal(false);
-      setFormData({ razonSocial: '', direccion: '', telefono: '', email: '', contacto: '' });
-      setEditId(null);
-      loadLabs();
-    } catch (err) {
-      alert('Error al guardar datos');
-    }
+      limpiarFormulario();
+      cargarLaboratorios();
+    } catch (err) { setErrorMsg(err.message); }
+    finally { setLoading(false); }
   };
 
-  const handleDelete = async (id) => {
-    if (confirm('¿Desea eliminar este registro?')) {
-      await API.delete(`/laboratorios/${id}`);
-      loadLabs();
-    }
+  const handleEditar = (lab) => {
+    setModoEdicion(true);
+    setFormData({ CodLab: lab.CodLab, razonSocial: lab.razonSocial || '', direccion: lab.direccion || '', telefono: lab.telefono || '', email: lab.email || '', contacto: lab.contacto || '' });
+    setErrorMsg(''); setSuccessMsg('');
   };
 
-  const handleEdit = (lab) => {
-    setEditId(lab.CodLab);
-    setFormData(lab);
-    setShowModal(true);
+  const handleEliminar = async (CodLab) => {
+    if (!window.confirm('¿Está seguro de eliminar este laboratorio?')) return;
+    setLoading(true); setErrorMsg(''); setSuccessMsg('');
+    try {
+      await API.delete(`/laboratorios/${CodLab}`);
+      setSuccessMsg('Laboratorio eliminado correctamente.');
+      cargarLaboratorios();
+    } catch (err) { setErrorMsg(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const limpiarFormulario = () => {
+    setFormData({ CodLab: null, razonSocial: '', direccion: '', telefono: '', email: '', contacto: '' });
+    setModoEdicion(false);
   };
 
   return (
     <div className="container mt-4">
-      <button className="btn btn-danger mb-3 fw-bold" onClick={() => { setEditId(null); setFormData({ razonSocial: '', direccion: '', telefono: '', email: '', contacto: '' }); setShowModal(true); }}>
-        Nuevo Laboratorio
-      </button>
-
-      <table className="table table-striped align-middle shadow-sm">
-        <thead className="table-info">
-          <tr>
-            <th>Razón Social</th>
-            <th>Dirección</th>
-            <th>Teléfono</th>
-            <th>Contacto</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {labs.map((lab) => (
-            <tr key={lab.CodLab}>
-              <td>{lab.razonSocial}</td>
-              <td>{lab.direccion}</td>
-              <td>{lab.telefono}</td>
-              <td>{lab.contacto}</td>
-              <td>
-                <button className="btn btn-outline-primary btn-sm me-2" onClick={() => handleEdit(lab)}>
-                  <i className="bi bi-pencil"></i> ✏️
-                </button>
-                <button className="btn btn-outline-danger btn-sm" onClick={() => handleDelete(lab.CodLab)}>
-                  <i className="bi bi-trash"></i> 🗑️
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Modal Recreado */}
-      {showModal && (
-        <div className="modal show d-block tab-index='-1'" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title">{editId ? 'Editar Laboratorio' : 'Nuevo Laboratorio'}</h5>
-                <button className="btn-close btn-close-white" onClick={() => setShowModal(false)}></button>
-              </div>
-              <form onSubmit={handleSave}>
-                <div className="modal-body">
-                  <div className="mb-2">
-                    <label>Razón Social</label>
-                    <input type="text" className="form-control" value={formData.razonSocial} onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })} required />
-                  </div>
-                  <div className="mb-2">
-                    <label>Dirección</label>
-                    <input type="text" className="form-control" value={formData.direccion} onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} />
-                  </div>
-                  <div className="mb-2">
-                    <label>Teléfono</label>
-                    <input type="text" className="form-control" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
-                  </div>
-                  <div className="mb-2">
-                    <label>Contacto</label>
-                    <input type="text" className="form-control" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="submit" className="btn btn-primary">Guardar</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <h2>Gestión de Laboratorios</h2>
+      <hr />
+      <AlertMessage error={errorMsg} success={successMsg} />
+      <LaboratorioForm
+        formData={formData}
+        handleChange={handleChange}
+        handleSubmit={handleSubmit}
+        modoEdicion={modoEdicion}
+        limpiarFormulario={limpiarFormulario}
+        loading={loading}
+      />
+      <LaboratorioTable
+        laboratorios={laboratorios}
+        loading={loading}
+        handleEditar={handleEditar}
+        handleEliminar={handleEliminar}
+      />
     </div>
   );
-}
+};
+
+export default LaboratoriosPage;

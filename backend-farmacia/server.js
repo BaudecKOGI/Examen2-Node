@@ -3,12 +3,23 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-const { sequelize, Laboratorio, OrdenCompra } = require('./models');
+const { 
+  sequelize, 
+  Laboratorio, 
+  OrdenCompra, 
+  TipoMedic, 
+  Especialidad, 
+  Medicamento 
+} = require('./models');
+
 const authMiddleware = require('./middleware/authMiddleware');
 
 const authRoutes = require('./routes/authRoutes');
 const laboratorioRoutes = require('./routes/laboratorioRoutes');
 const ordenCompraRoutes = require('./routes/ordenCompraRoutes');
+const medicamentoRoutes = require('./routes/medicamentoRoutes');
+const ordenVentaRoutes = require('./routes/ordenVentaRoutes');
+const catalogosRoutes = require('./routes/catalogosRoutes');
 
 const app = express();
 app.use(cors());
@@ -16,14 +27,17 @@ app.use(express.json());
 
 // Rutas Públicas
 app.use('/api/auth', authRoutes);
+app.use('/api/catalogos', catalogosRoutes);
 
 // Rutas Protegidas por JWT
 app.use('/api/laboratorios', authMiddleware, laboratorioRoutes);
 app.use('/api/ordenes-compra', authMiddleware, ordenCompraRoutes);
+app.use('/api/medicamentos', authMiddleware, medicamentoRoutes);
+app.use('/api/ordenes-venta', authMiddleware, ordenVentaRoutes);
 
 const PORT = process.env.PORT || 3000;
 
-// Garantiza la creación de la base de datos en MySQL antes de conectar Sequelize
+// Creación automática de la base de datos si es local
 async function createDatabaseIfNotExists() {
   const host = process.env.DB_HOST || 'localhost';
   const user = process.env.DB_USER || 'root';
@@ -35,10 +49,11 @@ async function createDatabaseIfNotExists() {
   await connection.end();
 }
 
-// Función para insertar registros iniciales automáticamente usando Sequelize
+// Carga inicial de datos de prueba para las 8 tablas
 async function seedDatabase() {
-  const count = await Laboratorio.count();
-  if (count === 0) {
+  const countLab = await Laboratorio.count();
+  if (countLab === 0) {
+    // 1. Laboratorios
     const lab1 = await Laboratorio.create({
       razonSocial: 'Bayer S.A.',
       direccion: 'Av. Primavera 123',
@@ -55,6 +70,28 @@ async function seedDatabase() {
       contacto: 'Ana Torres'
     });
 
+    // 2. Catálogos (TipoMedic y Especialidad)
+    const tipo1 = await TipoMedic.create({ descripcion: 'Analgesico' });
+    const tipo2 = await TipoMedic.create({ descripcion: 'Antibiotico' });
+
+    const esp1 = await Especialidad.create({ descripcionEsp: 'Medicina General' });
+    const esp2 = await Especialidad.create({ descripcionEsp: 'Pediatria' });
+
+    // 3. Medicamentos
+    await Medicamento.create({
+      descripcionMed: 'Paracetamol 500mg',
+      fechaFabricacion: '2025-01-10',
+      fechaVencimiento: '2027-01-10',
+      Presentacion: 'Caja x 100 pastillas',
+      stock: 50,
+      precioVentaUni: 0.50,
+      precioVentaPres: 45.00,
+      CodTipoMed: tipo1.CodTipoMed,
+      Marca: 'Bayer',
+      CodEspec: esp1.CodEspec
+    });
+
+    // 4. Órdenes de Compra
     await OrdenCompra.create({
       fechaEmision: '2026-03-01',
       Situacion: 'Aprobado',
@@ -71,23 +108,22 @@ async function seedDatabase() {
       NrofacturaProv: 'F001-988'
     });
 
-    console.log('🌱 Registros iniciales insertados en la BD con Sequelize.');
+    console.log('🌱 Datos iniciales insertados en las 8 tablas de la BD.');
   }
 }
 
-// Inicialización asíncrona del servidor
 async function startServer() {
   try {
     await createDatabaseIfNotExists();
     console.log('✅ Base de datos verificada/creada en MySQL.');
 
     await sequelize.sync({ alter: true });
-    console.log('✅ Base de datos "bd_Farmacia" y tablas sincronizadas.');
+    console.log('✅ Base de datos y las 8 tablas sincronizadas correctamente.');
 
     await seedDatabase();
 
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
+      console.log(`🚀 Servidor backend listo en http://localhost:${PORT}`);
     });
   } catch (err) {
     console.error('❌ Error al iniciar la BD:', err);

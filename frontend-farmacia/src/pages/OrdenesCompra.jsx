@@ -1,40 +1,89 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../services/api';
+import AlertMessage from '../components/common/AlertMessage';
+import OrdenCompraForm from '../components/ordenes/compra/OrdenCompraForm';
+import OrdenCompraTable from '../components/ordenes/compra/OrdenCompraTable';
 
-export default function OrdenesCompra() {
+const OrdenesCompra = () => {
   const [ordenes, setOrdenes] = useState([]);
+  const [laboratorios, setLaboratorios] = useState([]);
+  const [formData, setFormData] = useState({
+    fechaEmision: new Date().toISOString().split('T')[0],
+    Situacion: 'Aprobado',
+    Total: '',
+    CodLab: '',
+    NrofacturaProv: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  useEffect(() => {
-    API.get('/ordenes-compra')
-      .then((res) => setOrdenes(res.data))
-      .catch((err) => console.error(err));
-  }, []);
+  useEffect(() => { cargarDatos(); }, []);
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const [resOrd, resLab] = await Promise.all([
+        API.get('/ordenes-compra'),
+        API.get('/laboratorios')
+      ]);
+      setOrdenes(resOrd.data);
+      setLaboratorios(resLab.data);
+    } catch (err) { setErrorMsg(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg(''); setSuccessMsg('');
+    setLoading(true);
+    try {
+      await API.post('/ordenes-compra', formData);
+      setSuccessMsg('Orden de compra emitida exitosamente.');
+      setFormData({
+        fechaEmision: new Date().toISOString().split('T')[0],
+        Situacion: 'Aprobado',
+        Total: '',
+        CodLab: '',
+        NrofacturaProv: ''
+      });
+      cargarDatos();
+    } catch (err) { setErrorMsg(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleEliminar = async (NroOrdenC) => {
+    if (!window.confirm('¿Está seguro de eliminar esta orden de compra?')) return;
+    setLoading(true); setErrorMsg(''); setSuccessMsg('');
+    try {
+      await API.delete(`/ordenes-compra/${NroOrdenC}`);
+      setSuccessMsg('Orden de compra eliminada.');
+      cargarDatos();
+    } catch (err) { setErrorMsg(err.message); }
+    finally { setLoading(false); }
+  };
 
   return (
-    <div className="container mt-4">
-      <h3 className="mb-3 text-primary">Órdenes de Compra Relacionadas</h3>
-      <table className="table table-bordered shadow-sm">
-        <thead className="table-primary">
-          <tr>
-            <th>N° Orden</th>
-            <th>Fecha Emisión</th>
-            <th>Situación</th>
-            <th>Total (S/)</th>
-            <th>Laboratorio Asociado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ordenes.map((orden) => (
-            <tr key={orden.NroOrdenC}>
-              <td>OC-{orden.NroOrdenC}</td>
-              <td>{orden.fechaEmision}</td>
-              <td><span className="badge bg-warning text-dark">{orden.Situacion}</span></td>
-              <td>S/ {Number(orden.Total).toFixed(2)}</td>
-              <td><strong>{orden.laboratorio?.razonSocial || 'N/A'}</strong></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="container mt-2">
+      <h2>Gestión de Órdenes de Compra</h2>
+      <hr />
+      <AlertMessage error={errorMsg} success={successMsg} />
+      <OrdenCompraForm
+        formData={formData}
+        handleChange={handleChange}
+        handleSubmit={handleSubmit}
+        laboratorios={laboratorios}
+        loading={loading}
+      />
+      <OrdenCompraTable
+        ordenes={ordenes}
+        loading={loading}
+        handleEliminar={handleEliminar}
+      />
     </div>
   );
-}
+};
+
+export default OrdenesCompra;
