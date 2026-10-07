@@ -71,6 +71,7 @@ const Medicamentos = () => {
         handleSubmit={handleSubmit}
         tipos={tipos}
         especialidades={especialidades}
+        cargarDatos={cargarDatos}
         loading={loading}
       />
       <MedicamentoTable
